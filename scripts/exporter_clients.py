@@ -1,0 +1,36 @@
+import psycopg2, os
+from datetime import datetime
+import json
+
+@data_exporter
+def export_to_postgres(data, **kwargs):
+    conn = psycopg2.connect(
+        host=os.environ.get("POSTGRES_HOST"),
+        dbname=os.environ.get("POSTGRES_DB"),
+        user=os.environ.get("POSTGRES_USER"),
+        password=os.environ.get("POSTGRES_PASSWORD")
+    )
+    cur = conn.cursor()
+
+    for row in data:
+        cur.execute(f"""
+        INSERT INTO raw.{kwargs['table_name_customers']} (id, payload, ingested_at_utc, extract_window_start_utc, extract_window_end_utc,
+        page_number, page_size, request_payload, source_realm_id, source_env)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        ON CONFLICT (id) DO UPDATE SET
+          payload = EXCLUDED.payload,
+          ingested_at_utc = EXCLUDED.ingested_at_utc,
+          extract_window_start_utc = EXCLUDED.extract_window_start_utc,
+          extract_window_end_utc = EXCLUDED.extract_window_end_utc,
+          page_number = EXCLUDED.page_number,
+          page_size = EXCLUDED.page_size,
+          request_payload = EXCLUDED.request_payload,
+          source_realm_id = EXCLUDED.source_realm_id,
+          source_env = EXCLUDED.source_env;
+        """, (
+            row.get("Id"), json.dumps(row), datetime.utcnow(), kwargs['fecha_inicio'], kwargs['fecha_fin'],
+            kwargs['page_number'], kwargs['page_size'], json.dumps(row), os.environ.get("QBO_REALM_ID"), os.environ.get("QBO_ENV")
+        ))
+    conn.commit()
+    cur.close()
+    conn.close()

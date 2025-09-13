@@ -1,0 +1,56 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_qbo
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - qbo_net
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_qbo
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    networks:
+      - qbo_net
+
+  mage:
+    image: mageai/mageai:latest
+    container_name: mage_qbo
+    ports:
+      - "6789:6789"
+    volumes:
+      - ./mage:/project
+    environment:
+      MAGE_HOME: /project
+      POSTGRES_HOST: postgres_qbo
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      QBO_CLIENT_ID: ${QBO_CLIENT_ID}
+      QBO_CLIENT_SECRET: ${QBO_CLIENT_SECRET}
+      QBO_REALM_ID: ${QBO_REALM_ID}
+      QBO_REFRESH_TOKEN: ${QBO_REFRESH_TOKEN}
+      QBO_ENV: ${QBO_ENV}
+    depends_on:
+      - postgres
+    networks:
+      - qbo_net
+
+volumes:
+  pgdata:
+
+networks:
+  qbo_net:
+    name: qbo_net
+    driver: bridge

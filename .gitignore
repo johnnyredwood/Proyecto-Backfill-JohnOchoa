@@ -1,12 +1,1 @@
-# Python
-__pycache__/
-*.pyc
 .env
-
-# Docker
-*.env
-*.log
-docker-compose.override.yml
-
-# Mage / Secrets
-mage/secrets.yml
